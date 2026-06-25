@@ -186,7 +186,7 @@ function TempoScreen() {
       )}
 
       <div className="tempo-card">
-        <p className="eyebrow">Tempo</p>
+        <p className="eyebrow">Tiempo</p>
         <h2>Cronómetro</h2>
 
         <div className="tempo-display">{formatTime(stopwatchSeconds)}</div>
@@ -541,7 +541,7 @@ function App() {
     onClick={() => setActiveTab("tempo")}
   >
     <span>⏱️</span>
-    <small>Tempo</small>
+    <small>Tiempo</small>
   </button>
 </nav>
     </main>
