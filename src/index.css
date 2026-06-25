@@ -386,3 +386,116 @@ select {
   font-size: 22px;
   font-weight: 800;
 }
+
+.history-card {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 20px;
+  padding: 14px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.history-header h3 {
+  margin-bottom: 0;
+  font-size: 17px;
+}
+
+.history-count {
+  background: #111827;
+  color: white;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.history-stats div {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.history-stats span {
+  display: block;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.history-stats strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.history-stats small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.history-chart {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.history-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.history-chart line {
+  stroke: #d1d5db;
+  stroke-width: 2;
+}
+
+.history-chart polyline {
+  fill: none;
+  stroke: #111827;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.history-chart circle {
+  fill: #111827;
+}
+
+.history-chart text {
+  fill: #374151;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.history-note {
+  color: #4b5563;
+  font-size: 13px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 420px) {
+  .history-stats {
+    grid-template-columns: 1fr;
+  }
+}
