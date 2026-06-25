@@ -84,6 +84,8 @@ function formatTime(totalSeconds) {
 function TempoScreen() {
   const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
   const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+  const [isCountdownActive, setIsCountdownActive] = useState(false);
 
   const [timerMinutes, setTimerMinutes] = useState(1);
   const [timerSeconds, setTimerSeconds] = useState(60);
@@ -98,6 +100,24 @@ function TempoScreen() {
 
     return () => clearInterval(interval);
   }, [isStopwatchRunning]);
+
+    useEffect(() => {
+    if (!isCountdownActive) return;
+
+    const timeout = setTimeout(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          setIsCountdownActive(false);
+          setIsStopwatchRunning(true);
+          return 3;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [isCountdownActive, countdown]);
 
   useEffect(() => {
     if (!isTimerRunning) return;
@@ -116,6 +136,25 @@ function TempoScreen() {
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
+  function startStopwatchWithCountdown() {
+    if (isStopwatchRunning || isCountdownActive) return;
+
+    setCountdown(3);
+    setIsCountdownActive(true);
+  }
+
+  function pauseStopwatch() {
+    setIsStopwatchRunning(false);
+    setIsCountdownActive(false);
+  }
+
+  function resetStopwatch() {
+    setIsStopwatchRunning(false);
+    setIsCountdownActive(false);
+    setStopwatchSeconds(0);
+    setCountdown(3);
+  }
+  
   function startTimer() {
     if (timerSeconds === 0) {
       setTimerSeconds(timerMinutes * 60);
@@ -139,6 +178,13 @@ function TempoScreen() {
 
   return (
     <section className="tempo-screen">
+      {isCountdownActive && (
+        <div className="countdown-overlay">
+          <div className="countdown-number">{countdown}</div>
+          <p>Prepárate</p>
+        </div>
+      )}
+
       <div className="tempo-card">
         <p className="eyebrow">Tempo</p>
         <h2>Cronómetro</h2>
@@ -180,9 +226,9 @@ function TempoScreen() {
         <div className="tempo-display">{formatTime(timerSeconds)}</div>
 
         <div className="tempo-actions">
-          <button onClick={startTimer}>Iniciar</button>
-          <button onClick={() => setIsTimerRunning(false)}>Pausar</button>
-          <button onClick={resetTimer}>Reiniciar</button>
+          <button onClick={startStopwatchWithCountdown}>Iniciar</button>
+          <button onClick={pauseStopwatch}>Pausar</button>
+          <button onClick={resetStopwatch}>Reiniciar</button>
         </div>
       </div>
     </section>
