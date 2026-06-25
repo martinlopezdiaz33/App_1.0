@@ -292,15 +292,18 @@ function App() {
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [sets, setSets] = useState("");
+  const [editingExerciseId, setEditingExerciseId] = useState(null);
 
   useEffect(() => {
     localStorage.setItem("gym-workouts", JSON.stringify(workouts));
   }, [workouts]);
 
   useEffect(() => {
+    if (editingExerciseId) return;
+
     setExerciseName(EXERCISES[categoryId]?.[0] || "");
     setCustomExercise("");
-  }, [categoryId]);
+  }, [categoryId, editingExerciseId]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -342,8 +345,7 @@ function App() {
       return;
     }
 
-    const newExercise = {
-      id: crypto.randomUUID(),
+    const exerciseData = {
       categoryId,
       exerciseName: finalExerciseName,
       weight: Number(weight),
@@ -351,17 +353,41 @@ function App() {
       sets: Number(sets),
     };
 
-    setWorkouts((prev) => ({
-      ...prev,
-      [selectedDate]: [...(prev[selectedDate] || []), newExercise],
-    }));
+    if (editingExerciseId) {
+      setWorkouts((prev) => {
+        const updatedDay = (prev[selectedDate] || []).map((exercise) => {
+          if (exercise.id !== editingExerciseId) return exercise;
+
+          return {
+            ...exercise,
+            ...exerciseData,
+          };
+        });
+
+        return {
+          ...prev,
+          [selectedDate]: updatedDay,
+        };
+      });
+    } else {
+      const newExercise = {
+        id: crypto.randomUUID(),
+        ...exerciseData,
+      };
+
+      setWorkouts((prev) => ({
+        ...prev,
+        [selectedDate]: [...(prev[selectedDate] || []), newExercise],
+      }));
+    }
 
     setWeight("");
     setReps("");
     setSets("");
     setCustomExercise("");
+    setEditingExerciseId(null);
   }
-
+  
   function deleteExercise(exerciseId) {
     setWorkouts((prev) => {
       const updatedDay = (prev[selectedDate] || []).filter(
@@ -373,6 +399,44 @@ function App() {
         [selectedDate]: updatedDay,
       };
     });
+
+    if (editingExerciseId === exerciseId) {
+      cancelEditExercise();
+    }
+  }
+
+  function handleCategoryChange(newCategoryId) {
+    setCategoryId(newCategoryId);
+    setExerciseName(EXERCISES[newCategoryId]?.[0] || "");
+    setCustomExercise("");
+  }
+
+  function startEditExercise(exercise) {
+    const exercisesForCategory = EXERCISES[exercise.categoryId] || [];
+    const isDefaultExercise = exercisesForCategory.includes(exercise.exerciseName);
+
+    setEditingExerciseId(exercise.id);
+    setCategoryId(exercise.categoryId);
+
+    if (isDefaultExercise) {
+      setExerciseName(exercise.exerciseName);
+      setCustomExercise("");
+    } else {
+      setExerciseName("otro");
+      setCustomExercise(exercise.exerciseName);
+    }
+
+    setWeight(String(exercise.weight));
+    setReps(String(exercise.reps));
+    setSets(String(exercise.sets));
+  }
+
+  function cancelEditExercise() {
+    setEditingExerciseId(null);
+    setWeight("");
+    setReps("");
+    setSets("");
+    setCustomExercise("");
   }
 
   function getDotsForDate(date) {
@@ -472,7 +536,24 @@ function App() {
                     >
                       {category.name}
                     </span>
-                    <button onClick={() => deleteExercise(exercise.id)}>Eliminar</button>
+
+                    <div className="exercise-actions">
+                      <button
+                        type="button"
+                        className="edit-button"
+                        onClick={() => startEditExercise(exercise)}
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        type="button"
+                        className="delete-button"
+                        onClick={() => deleteExercise(exercise.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </div>
 
                   <h3>{exercise.exerciseName}</h3>
@@ -487,13 +568,15 @@ function App() {
       </section>
 
       <section className="form-card">
-        <p className="eyebrow">Agregar ejercicio</p>
-        <h2>Nueva entrada</h2>
+        <p className="eyebrow">
+          {editingExerciseId ? "Editar ejercicio" : "Agregar ejercicio"}
+        </p>
+        <h2>{editingExerciseId ? "Modificar entrada" : "Nueva entrada"}</h2>
 
         <form onSubmit={handleSaveExercise}>
           <label>
             Tipo de entrenamiento
-            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <select value={categoryId} onChange={(e) => handleCategoryChange(e.target.value)}>
               {CATEGORIES.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -562,8 +645,18 @@ function App() {
           </div>
 
           <button className="save-button" type="submit">
-            Guardar ejercicio
+            {editingExerciseId ? "Guardar cambios" : "Guardar ejercicio"}
           </button>
+
+          {editingExerciseId && (
+            <button
+              type="button"
+              className="cancel-edit-button"
+              onClick={cancelEditExercise}
+            >
+              Cancelar edición
+            </button>
+          )}
         </form>
       </section>
       </>
