@@ -123,18 +123,19 @@ function ExerciseHistory({ history }) {
   }, history[0]);
 
   const previousSession = history[history.length - 1];
-  const chartData = history.slice(-8);
+  const chartData = history;
 
+  const chartWidth = Math.max(300, chartData.length * 72);
   const maxChartWeight = Math.max(...chartData.map((item) => item.weight), 1);
 
   const points = chartData
     .map((item, index) => {
       const x =
         chartData.length === 1
-          ? 150
-          : 20 + (index * 260) / (chartData.length - 1);
+          ? chartWidth / 2
+          : 24 + (index * (chartWidth - 56)) / (chartData.length - 1);
 
-      const y = 150 - (item.weight / maxChartWeight) * 110;
+      const y = 145 - (item.weight / maxChartWeight) * 105;
 
       return `${x},${y}`;
     })
@@ -167,25 +168,34 @@ function ExerciseHistory({ history }) {
       </div>
 
       <div className="history-chart">
-        <svg viewBox="0 0 300 170" role="img" aria-label="Gráfico de historial de peso">
-          <line x1="20" y1="150" x2="285" y2="150" />
-          <line x1="20" y1="25" x2="20" y2="150" />
+        <svg
+          viewBox={`0 0 ${chartWidth} 190`}
+          role="img"
+          aria-label="Gráfico de historial completo de peso"
+        >
+          <line x1="24" y1="145" x2={chartWidth - 24} y2="145" />
+          <line x1="24" y1="30" x2="24" y2="145" />
 
           <polyline points={points} />
 
           {chartData.map((item, index) => {
             const x =
               chartData.length === 1
-                ? 150
-                : 20 + (index * 260) / (chartData.length - 1);
+                ? chartWidth / 2
+                : 24 + (index * (chartWidth - 56)) / (chartData.length - 1);
 
-            const y = 150 - (item.weight / maxChartWeight) * 110;
+            const y = 145 - (item.weight / maxChartWeight) * 105;
 
             return (
               <g key={`${item.date}-${index}`}>
                 <circle cx={x} cy={y} r="5" />
+
                 <text x={x} y={y - 10} textAnchor="middle">
                   {item.weight}kg
+                </text>
+
+                <text x={x} y="170" textAnchor="middle" className="history-date-label">
+                  {formatDisplayDate(item.date).slice(0, 5)}
                 </text>
               </g>
             );
