@@ -1,0 +1,247 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f3f4f6;
+  color: #111827;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app {
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: 28px;
+  line-height: 1.1;
+  margin-bottom: 0;
+}
+
+h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.today-button,
+.calendar-header button,
+.exercise-top button,
+.save-button {
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: #111827;
+  color: white;
+  font-weight: 700;
+}
+
+.calendar-card,
+.detail-card,
+.form-card {
+  background: white;
+  border-radius: 24px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.calendar-header h2 {
+  text-transform: capitalize;
+  margin-bottom: 0;
+}
+
+.weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.weekdays {
+  margin: 18px 0 8px;
+  text-align: center;
+  font-weight: 800;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.day,
+.empty-day {
+  min-height: 58px;
+  border-radius: 16px;
+}
+
+.day {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: start;
+  padding: 8px;
+  color: #111827;
+}
+
+.day.selected {
+  border: 2px solid #111827;
+  background: #eef2ff;
+}
+
+.dots {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.empty-message {
+  color: #6b7280;
+  margin-bottom: 0;
+}
+
+.exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exercise-item {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.exercise-item h3 {
+  margin: 10px 0 4px;
+  font-size: 17px;
+}
+
+.exercise-item p {
+  margin-bottom: 0;
+  color: #4b5563;
+}
+
+.exercise-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.exercise-top button {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.category-pill {
+  color: white;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-weight: 700;
+  color: #374151;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 14px;
+  padding: 12px;
+  color: #111827;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.save-button {
+  width: 100%;
+  padding: 14px;
+  background: #111827;
+}
+
+@media (max-width: 420px) {
+  .app {
+    padding: 14px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .day,
+  .empty-day {
+    min-height: 50px;
+  }
+}
