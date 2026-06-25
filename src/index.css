@@ -62,7 +62,6 @@ h2 {
 
 .today-button,
 .calendar-header button,
-.exercise-top button,
 .save-button {
   border: 0;
   border-radius: 14px;
@@ -176,11 +175,36 @@ h2 {
   align-items: center;
 }
 
-.exercise-top button {
-  background: #fee2e2;
-  color: #991b1b;
+.exercise-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.exercise-actions button {
+  border: 0;
+  border-radius: 12px;
   padding: 8px 10px;
   font-size: 12px;
+  font-weight: 800;
+}
+
+.edit-button {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.delete-button {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.cancel-edit-button {
+  border: 0;
+  border-radius: 14px;
+  padding: 14px;
+  background: #e5e7eb;
+  color: #111827;
+  font-weight: 800;
 }
 
 .category-pill {
