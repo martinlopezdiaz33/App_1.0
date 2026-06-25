@@ -74,6 +74,121 @@ function getCategoryById(id) {
   return CATEGORIES.find((category) => category.id === id);
 }
 
+function formatTime(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function TempoScreen() {
+  const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
+  const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
+
+  const [timerMinutes, setTimerMinutes] = useState(1);
+  const [timerSeconds, setTimerSeconds] = useState(60);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  useEffect(() => {
+    if (!isStopwatchRunning) return;
+
+    const interval = setInterval(() => {
+      setStopwatchSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isStopwatchRunning]);
+
+  useEffect(() => {
+    if (!isTimerRunning) return;
+
+    const interval = setInterval(() => {
+      setTimerSeconds((prev) => {
+        if (prev <= 1) {
+          setIsTimerRunning(false);
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isTimerRunning]);
+
+  function startTimer() {
+    if (timerSeconds === 0) {
+      setTimerSeconds(timerMinutes * 60);
+    }
+
+    setIsTimerRunning(true);
+  }
+
+  function resetTimer() {
+    setIsTimerRunning(false);
+    setTimerSeconds(timerMinutes * 60);
+  }
+
+  function handleTimerMinutesChange(value) {
+    const minutes = Number(value);
+
+    setTimerMinutes(minutes);
+    setTimerSeconds(minutes * 60);
+    setIsTimerRunning(false);
+  }
+
+  return (
+    <section className="tempo-screen">
+      <div className="tempo-card">
+        <p className="eyebrow">Tempo</p>
+        <h2>Cronómetro</h2>
+
+        <div className="tempo-display">{formatTime(stopwatchSeconds)}</div>
+
+        <div className="tempo-actions">
+          <button onClick={() => setIsStopwatchRunning(true)}>Iniciar</button>
+          <button onClick={() => setIsStopwatchRunning(false)}>Pausar</button>
+          <button
+            onClick={() => {
+              setIsStopwatchRunning(false);
+              setStopwatchSeconds(0);
+            }}
+          >
+            Reiniciar
+          </button>
+        </div>
+      </div>
+
+      <div className="tempo-card">
+        <p className="eyebrow">Descanso</p>
+        <h2>Temporizador</h2>
+
+        <label>
+          Minutos
+          <select
+            value={timerMinutes}
+            onChange={(event) => handleTimerMinutesChange(event.target.value)}
+          >
+            <option value="1">1 minuto</option>
+            <option value="2">2 minutos</option>
+            <option value="3">3 minutos</option>
+            <option value="4">4 minutos</option>
+            <option value="5">5 minutos</option>
+          </select>
+        </label>
+
+        <div className="tempo-display">{formatTime(timerSeconds)}</div>
+
+        <div className="tempo-actions">
+          <button onClick={startTimer}>Iniciar</button>
+          <button onClick={() => setIsTimerRunning(false)}>Pausar</button>
+          <button onClick={resetTimer}>Reiniciar</button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState("entreno");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -365,7 +480,24 @@ function App() {
       </section>
       </>
 )}
+      {activeTab === "tempo" && <TempoScreen />}
+<nav className="bottom-nav">
+  <button
+    className={activeTab === "entreno" ? "nav-item active" : "nav-item"}
+    onClick={() => setActiveTab("entreno")}
+  >
+    <span>🏋️</span>
+    <small>Entreno</small>
+  </button>
 
+  <button
+    className={activeTab === "tempo" ? "nav-item active" : "nav-item"}
+    onClick={() => setActiveTab("tempo")}
+  >
+    <span>⏱️</span>
+    <small>Tempo</small>
+  </button>
+</nav>
     </main>
   );
 }
