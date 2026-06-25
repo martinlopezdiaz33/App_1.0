@@ -84,12 +84,14 @@ function formatTime(totalSeconds) {
 function TempoScreen() {
   const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
   const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
-  const [countdown, setCountdown] = useState(3);
-  const [isCountdownActive, setIsCountdownActive] = useState(false);
 
   const [timerMinutes, setTimerMinutes] = useState(1);
   const [timerSeconds, setTimerSeconds] = useState(60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  const [countdown, setCountdown] = useState(3);
+  const [isCountdownActive, setIsCountdownActive] = useState(false);
+  const [countdownTarget, setCountdownTarget] = useState(null);
 
   useEffect(() => {
     if (!isStopwatchRunning) return;
@@ -100,24 +102,6 @@ function TempoScreen() {
 
     return () => clearInterval(interval);
   }, [isStopwatchRunning]);
-
-    useEffect(() => {
-    if (!isCountdownActive) return;
-
-    const timeout = setTimeout(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          setIsCountdownActive(false);
-          setIsStopwatchRunning(true);
-          return 3;
-        }
-
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearTimeout(timeout);
-  }, [isCountdownActive, countdown]);
 
   useEffect(() => {
     if (!isTimerRunning) return;
@@ -136,36 +120,82 @@ function TempoScreen() {
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
-  function startStopwatchWithCountdown() {
-    if (isStopwatchRunning || isCountdownActive) return;
+  useEffect(() => {
+    if (!isCountdownActive) return;
+
+    const timeout = setTimeout(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          setIsCountdownActive(false);
+
+          if (countdownTarget === "stopwatch") {
+            setIsStopwatchRunning(true);
+          }
+
+          if (countdownTarget === "timer") {
+            setIsTimerRunning(true);
+          }
+
+          setCountdownTarget(null);
+          return 3;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [isCountdownActive, countdown, countdownTarget]);
+
+  function startCountdown(target) {
+    if (isCountdownActive) return;
+
+    if (target === "stopwatch" && isStopwatchRunning) return;
+    if (target === "timer" && isTimerRunning) return;
+
+    if (target === "timer" && timerSeconds === 0) {
+      setTimerSeconds(timerMinutes * 60);
+    }
 
     setCountdown(3);
+    setCountdownTarget(target);
     setIsCountdownActive(true);
   }
 
   function pauseStopwatch() {
     setIsStopwatchRunning(false);
-    setIsCountdownActive(false);
+
+    if (countdownTarget === "stopwatch") {
+      setIsCountdownActive(false);
+      setCountdownTarget(null);
+      setCountdown(3);
+    }
   }
 
   function resetStopwatch() {
     setIsStopwatchRunning(false);
     setIsCountdownActive(false);
+    setCountdownTarget(null);
     setStopwatchSeconds(0);
     setCountdown(3);
   }
-  
-  function startTimer() {
-    if (timerSeconds === 0) {
-      setTimerSeconds(timerMinutes * 60);
-    }
 
-    setIsTimerRunning(true);
+  function pauseTimer() {
+    setIsTimerRunning(false);
+
+    if (countdownTarget === "timer") {
+      setIsCountdownActive(false);
+      setCountdownTarget(null);
+      setCountdown(3);
+    }
   }
 
   function resetTimer() {
     setIsTimerRunning(false);
+    setIsCountdownActive(false);
+    setCountdownTarget(null);
     setTimerSeconds(timerMinutes * 60);
+    setCountdown(3);
   }
 
   function handleTimerMinutesChange(value) {
@@ -174,6 +204,9 @@ function TempoScreen() {
     setTimerMinutes(minutes);
     setTimerSeconds(minutes * 60);
     setIsTimerRunning(false);
+    setIsCountdownActive(false);
+    setCountdownTarget(null);
+    setCountdown(3);
   }
 
   return (
@@ -181,7 +214,11 @@ function TempoScreen() {
       {isCountdownActive && (
         <div className="countdown-overlay">
           <div className="countdown-number">{countdown}</div>
-          <p>Prepárate</p>
+          <p>
+            {countdownTarget === "timer"
+              ? "Comienza el descanso"
+              : "Prepárate para entrenar"}
+          </p>
         </div>
       )}
 
@@ -192,14 +229,13 @@ function TempoScreen() {
         <div className="tempo-display">{formatTime(stopwatchSeconds)}</div>
 
         <div className="tempo-actions">
-          <button onClick={() => setIsStopwatchRunning(true)}>Iniciar</button>
-          <button onClick={() => setIsStopwatchRunning(false)}>Pausar</button>
-          <button
-            onClick={() => {
-              setIsStopwatchRunning(false);
-              setStopwatchSeconds(0);
-            }}
-          >
+          <button type="button" onClick={() => startCountdown("stopwatch")}>
+            Iniciar
+          </button>
+          <button type="button" onClick={pauseStopwatch}>
+            Pausar
+          </button>
+          <button type="button" onClick={resetStopwatch}>
             Reiniciar
           </button>
         </div>
@@ -226,9 +262,15 @@ function TempoScreen() {
         <div className="tempo-display">{formatTime(timerSeconds)}</div>
 
         <div className="tempo-actions">
-          <button onClick={startStopwatchWithCountdown}>Iniciar</button>
-          <button onClick={pauseStopwatch}>Pausar</button>
-          <button onClick={resetStopwatch}>Reiniciar</button>
+          <button type="button" onClick={() => startCountdown("timer")}>
+            Iniciar
+          </button>
+          <button type="button" onClick={pauseTimer}>
+            Pausar
+          </button>
+          <button type="button" onClick={resetTimer}>
+            Reiniciar
+          </button>
         </div>
       </div>
     </section>
