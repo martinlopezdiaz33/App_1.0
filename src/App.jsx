@@ -81,6 +81,126 @@ function formatTime(totalSeconds) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function normalizeText(text) {
+  return text.trim().toLowerCase();
+}
+
+function formatDisplayDate(dateString) {
+  const [year, month, day] = dateString.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function getExerciseHistory(workouts, exerciseName, selectedDate) {
+  if (!exerciseName) return [];
+
+  const normalizedExerciseName = normalizeText(exerciseName);
+  const history = [];
+
+  Object.entries(workouts).forEach(([date, exercises]) => {
+    if (date >= selectedDate) return;
+
+    exercises.forEach((exercise) => {
+      if (normalizeText(exercise.exerciseName) === normalizedExerciseName) {
+        history.push({
+          date,
+          weight: exercise.weight,
+          reps: exercise.reps,
+          sets: exercise.sets,
+          volume: exercise.weight * exercise.reps * exercise.sets,
+        });
+      }
+    });
+  });
+
+  return history.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function ExerciseHistory({ history }) {
+  if (history.length === 0) return null;
+
+  const maxWeightEntry = history.reduce((max, item) => {
+    return item.weight > max.weight ? item : max;
+  }, history[0]);
+
+  const previousSession = history[history.length - 1];
+  const chartData = history.slice(-8);
+
+  const maxChartWeight = Math.max(...chartData.map((item) => item.weight), 1);
+
+  const points = chartData
+    .map((item, index) => {
+      const x =
+        chartData.length === 1
+          ? 150
+          : 20 + (index * 260) / (chartData.length - 1);
+
+      const y = 150 - (item.weight / maxChartWeight) * 110;
+
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="history-card">
+      <div className="history-header">
+        <div>
+          <p className="eyebrow">Historial</p>
+          <h3>Progreso anterior</h3>
+        </div>
+        <span className="history-count">{history.length} registros</span>
+      </div>
+
+      <div className="history-stats">
+        <div>
+          <span>Máximo peso</span>
+          <strong>{maxWeightEntry.weight} kg</strong>
+          <small>{formatDisplayDate(maxWeightEntry.date)}</small>
+        </div>
+
+        <div>
+          <span>Sesión anterior</span>
+          <strong>{previousSession.weight} kg</strong>
+          <small>
+            {previousSession.reps} reps · {previousSession.sets} series
+          </small>
+        </div>
+      </div>
+
+      <div className="history-chart">
+        <svg viewBox="0 0 300 170" role="img" aria-label="Gráfico de historial de peso">
+          <line x1="20" y1="150" x2="285" y2="150" />
+          <line x1="20" y1="25" x2="20" y2="150" />
+
+          <polyline points={points} />
+
+          {chartData.map((item, index) => {
+            const x =
+              chartData.length === 1
+                ? 150
+                : 20 + (index * 260) / (chartData.length - 1);
+
+            const y = 150 - (item.weight / maxChartWeight) * 110;
+
+            return (
+              <g key={`${item.date}-${index}`}>
+                <circle cx={x} cy={y} r="5" />
+                <text x={x} y={y - 10} textAnchor="middle">
+                  {item.weight}kg
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <p className="history-note">
+        Último registro: {previousSession.weight} kg · {previousSession.reps} reps ·{" "}
+        {previousSession.sets} series el {formatDisplayDate(previousSession.date)}.
+      </p>
+    </div>
+  );
+}
+
 function TempoScreen() {
   const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
   const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
@@ -329,6 +449,15 @@ function App() {
   }, [year, month]);
 
   const selectedWorkouts = workouts[selectedDate] || [];
+
+  const currentExerciseName =
+    exerciseName === "otro" ? customExercise.trim() : exerciseName;
+
+  const currentExerciseHistory = getExerciseHistory(
+    workouts,
+    currentExerciseName,
+    selectedDate
+  );
 
   function changeMonth(direction) {
     setCurrentDate(new Date(year, month + direction, 1));
@@ -607,6 +736,10 @@ function App() {
                 placeholder="Ej: Press inclinado máquina"
               />
             </label>
+          )}
+
+          {currentExerciseHistory.length > 0 && (
+            <ExerciseHistory history={currentExerciseHistory} />
           )}
 
           <div className="form-row">
