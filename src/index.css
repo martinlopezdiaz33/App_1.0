@@ -245,3 +245,95 @@ select {
     min-height: 50px;
   }
 }
+.app {
+  padding-bottom: 96px;
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(calc(100% - 28px), 520px);
+  background: #111827;
+  border-radius: 24px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.25);
+  z-index: 20;
+}
+
+.nav-item {
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: #d1d5db;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-weight: 800;
+}
+
+.nav-item span {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.nav-item small {
+  font-size: 12px;
+}
+
+.nav-item.active {
+  background: white;
+  color: #111827;
+}
+
+.tempo-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.tempo-card {
+  background: white;
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.tempo-display {
+  font-size: 54px;
+  font-weight: 900;
+  text-align: center;
+  margin: 24px 0;
+  letter-spacing: -0.04em;
+}
+
+.tempo-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.tempo-actions button {
+  border: 0;
+  border-radius: 14px;
+  padding: 12px 8px;
+  background: #111827;
+  color: white;
+  font-weight: 800;
+}
+
+@media (max-width: 420px) {
+  .tempo-display {
+    font-size: 46px;
+  }
+
+  .tempo-actions {
+    grid-template-columns: 1fr;
+  }
+}
