@@ -75,6 +75,7 @@ function getCategoryById(id) {
 }
 
 function App() {
+  const [activeTab, setActiveTab] = useState("entreno");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [workouts, setWorkouts] = useState(() => {
@@ -185,6 +186,8 @@ function App() {
 
   return (
     <main className="app">
+      {activeTab === "entreno" && (
+  <> 
       <section className="header">
         <div>
           <p className="eyebrow">Gym Tracker</p>
@@ -360,6 +363,9 @@ function App() {
           </button>
         </form>
       </section>
+      </>
+)}
+
     </main>
   );
 }
