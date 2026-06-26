@@ -506,3 +506,11 @@ select {
     grid-template-columns: 1fr;
   }
 }
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
