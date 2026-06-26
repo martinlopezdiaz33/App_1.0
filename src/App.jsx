@@ -309,7 +309,17 @@ function TempoScreen() {
     setStopwatchSeconds(0);
     setCountdown(3);
   }
+  
+  function startTimer() {
+    if (isTimerRunning) return;
 
+    if (timerSeconds === 0) {
+      setTimerSeconds(timerMinutes * 60);
+    }
+
+    setIsTimerRunning(true);
+  }
+  
   function pauseTimer() {
     setIsTimerRunning(false);
 
@@ -392,7 +402,7 @@ function TempoScreen() {
         <div className="tempo-display">{formatTime(timerSeconds)}</div>
 
         <div className="tempo-actions">
-          <button type="button" onClick={() => startCountdown("timer")}>
+          <button type="button" onClick={startTimer}>
             Iniciar
           </button>
           <button type="button" onClick={pauseTimer}>
@@ -592,8 +602,7 @@ function App() {
 
   return (
     <main className="app">
-      {activeTab === "entreno" && (
-  <> 
+    <div className={activeTab === "entreno" ? "tab-panel active" : "tab-panel"}>
       <section className="header">
         <div>
           <p className="eyebrow">Gym Tracker</p>
@@ -802,9 +811,11 @@ function App() {
           )}
         </form>
       </section>
-      </>
-)}
-      {activeTab === "tempo" && <TempoScreen />}
+    </div>
+
+    <div className={activeTab === "tempo" ? "tab-panel active" : "tab-panel"}>
+      <TempoScreen />
+    </div>
 <nav className="bottom-nav">
   <button
     className={activeTab === "entreno" ? "nav-item active" : "nav-item"}
