@@ -106,6 +106,85 @@ function inputWeightToKg(value, unit) {
   return Number(weightKg.toFixed(2));
 }
 
+function createSetRow(weight = "", reps = "", completed = false) {
+  return {
+    id: crypto.randomUUID(),
+    weight,
+    reps,
+    completed,
+  };
+}
+
+function buildSetRows(count, baseWeight = "", baseReps = "", existingRows = []) {
+  const safeCount = Math.max(Number(count) || 0, 0);
+
+  return Array.from({ length: safeCount }, (_, index) => {
+    const existingRow = existingRows[index];
+
+    if (existingRow) {
+      return existingRow;
+    }
+
+    return createSetRow(baseWeight, baseReps, false);
+  });
+}
+
+function getSetDetails(exercise) {
+  if (Array.isArray(exercise.setsDetails) && exercise.setsDetails.length > 0) {
+    return exercise.setsDetails;
+  }
+
+  const legacySetCount = Number(exercise.sets) || 0;
+
+  return Array.from({ length: legacySetCount }, (_, index) => ({
+    id: `legacy-${exercise.id}-${index}`,
+    weight: Number(exercise.weight) || 0,
+    reps: Number(exercise.reps) || 0,
+    completed: true,
+  }));
+}
+
+function getCompletedSetDetails(exercise) {
+  return getSetDetails(exercise).filter((set) => set.completed);
+}
+
+function getBestSet(exercise) {
+  const completedSets = getCompletedSetDetails(exercise);
+  const allSets = getSetDetails(exercise);
+  const setsToReview = completedSets.length > 0 ? completedSets : allSets;
+
+  if (setsToReview.length === 0) {
+    return {
+      weight: Number(exercise.weight) || 0,
+      reps: Number(exercise.reps) || 0,
+    };
+  }
+
+  return setsToReview.reduce((best, current) => {
+    if (Number(current.weight) > Number(best.weight)) return current;
+
+    if (
+      Number(current.weight) === Number(best.weight) &&
+      Number(current.reps) > Number(best.reps)
+    ) {
+      return current;
+    }
+
+    return best;
+  }, setsToReview[0]);
+}
+
+function getExerciseSummary(exercise, weightUnit) {
+  const allSets = getSetDetails(exercise);
+  const completedSets = getCompletedSetDetails(exercise);
+  const bestSet = getBestSet(exercise);
+
+  return `${completedSets.length}/${allSets.length} series completadas · Máx ${formatWeight(
+    bestSet.weight,
+    weightUnit
+  )} · ${bestSet.reps} reps`;
+}
+
 function formatTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -133,12 +212,16 @@ function getExerciseHistory(workouts, exerciseName, selectedDate) {
 
     exercises.forEach((exercise) => {
       if (normalizeText(exercise.exerciseName) === normalizedExerciseName) {
+        const bestSet = getBestSet(exercise);
+        const completedSets = getCompletedSetDetails(exercise);
+        const completedSetCount = completedSets.length;
+
         history.push({
           date,
-          weight: exercise.weight,
-          reps: exercise.reps,
-          sets: exercise.sets,
-          volume: exercise.weight * exercise.reps * exercise.sets,
+          weight: bestSet.weight,
+          reps: bestSet.reps,
+          sets: completedSetCount,
+          volume: bestSet.weight * bestSet.reps * Math.max(completedSetCount, 1),
         });
       }
     });
@@ -468,6 +551,7 @@ function App() {
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [sets, setSets] = useState("");
+  const [setRows, setSetRows] = useState([]);
   const [editingExerciseId, setEditingExerciseId] = useState(null);
   const [weightUnit, setWeightUnit] = useState(() => {
     return localStorage.getItem("gym-weight-unit") || "kg";
@@ -533,6 +617,35 @@ function App() {
     setWeightUnit(nextUnit);
   }
 
+  function updatePlannedSets(value) {
+    setSets(value);
+
+    const count = Number(value) || 0;
+    setSetRows((prevRows) => buildSetRows(count, weight, reps, prevRows));
+  }
+
+  function updateSetRow(rowId, field, value) {
+    setSetRows((prevRows) =>
+      prevRows.map((row) => {
+        if (row.id !== rowId) return row;
+
+        return {
+          ...row,
+          [field]: value,
+        };
+      })
+    );
+  }
+
+  function applyBaseValuesToSeries() {
+    const count = Number(sets) || 1;
+
+    setSets(String(count));
+    setSetRows(
+      Array.from({ length: count }, () => createSetRow(weight, reps, false))
+    );
+  }
+  
   function openTrainingDay(dateKey) {
     setSelectedDate(dateKey);
     setTrainingView("day");
@@ -565,12 +678,47 @@ function App() {
       return;
     }
 
+    const rowsToSave =
+      setRows.length > 0
+        ? setRows
+        : buildSetRows(Number(sets) || 1, weight, reps);
+
+    const normalizedSetRows = rowsToSave.map((row, index) => ({
+      id: row.id || `set-${index + 1}`,
+      weight: inputWeightToKg(row.weight, weightUnit),
+      reps: Number(row.reps),
+      completed: Boolean(row.completed),
+    }));
+
+    const hasInvalidSet = normalizedSetRows.some(
+      (row) => row.weight < 0 || !row.reps
+    );
+
+    if (normalizedSetRows.length === 0 || hasInvalidSet) {
+      alert("Completa las series con peso y repeticiones.");
+      return;
+    }
+
+    const completedRows = normalizedSetRows.filter((row) => row.completed);
+    const rowsForSummary = completedRows.length > 0 ? completedRows : normalizedSetRows;
+
+    const bestRow = rowsForSummary.reduce((best, current) => {
+      if (current.weight > best.weight) return current;
+
+      if (current.weight === best.weight && current.reps > best.reps) {
+        return current;
+      }
+
+      return best;
+    }, rowsForSummary[0]);
+
     const exerciseData = {
       categoryId,
       exerciseName: finalExerciseName,
-      weight: inputWeightToKg(weight, weightUnit),
-      reps: Number(reps),
-      sets: Number(sets),
+      weight: bestRow.weight,
+      reps: bestRow.reps,
+      sets: normalizedSetRows.length,
+      setsDetails: normalizedSetRows,
     };
 
     if (editingExerciseId) {
@@ -604,6 +752,7 @@ function App() {
     setWeight("");
     setReps("");
     setSets("");
+    setSetRows([]);
     setCustomExercise("");
     setEditingExerciseId(null);
     setShowExerciseForm(false);
@@ -649,9 +798,19 @@ function App() {
       setCustomExercise(exercise.exerciseName);
     }
 
+    const exerciseSets = getSetDetails(exercise);
+
     setWeight(formatInputWeight(exercise.weight, weightUnit));
     setReps(String(exercise.reps));
-    setSets(String(exercise.sets));
+    setSets(String(exerciseSets.length));
+    setSetRows(
+      exerciseSets.map((set) => ({
+        id: set.id || crypto.randomUUID(),
+        weight: formatInputWeight(set.weight, weightUnit),
+        reps: String(set.reps),
+        completed: Boolean(set.completed),
+      }))
+    );
   }
 
   function cancelEditExercise() {
@@ -659,6 +818,7 @@ function App() {
     setWeight("");
     setReps("");
     setSets("");
+    setSetRows([]);
     setCustomExercise("");
     setShowExerciseForm(false);
   }
@@ -816,10 +976,7 @@ function App() {
                   </div>
 
                   <h3>{exercise.exerciseName}</h3>
-                  <p>
-                    {formatWeight(exercise.weight, weightUnit)} · {exercise.reps} reps ·{" "}
-                    {exercise.sets} series
-                  </p>
+                  <p>{getExerciseSummary(exercise, weightUnit)}</p>
                 </div>
               );
             })}
@@ -898,16 +1055,72 @@ function App() {
             </label>
 
             <label>
-              Series
+              Series planificadas
               <input
                 type="number"
                 value={sets}
-                onChange={(e) => setSets(e.target.value)}
+                onChange={(e) => updatePlannedSets(e.target.value)}
                 placeholder="4"
                 min="0"
               />
             </label>
           </div>
+
+          {setRows.length > 0 && (
+            <div className="sets-editor">
+              <div className="sets-editor-header">
+                <div>
+                  <strong>Series del ejercicio</strong>
+                  <small>Marca cada serie cuando la completes.</small>
+                </div>
+
+                <button type="button" onClick={applyBaseValuesToSeries}>
+                  Aplicar base
+                </button>
+              </div>
+
+              <div className="set-rows">
+                {setRows.map((row, index) => (
+                  <div className="set-row" key={row.id}>
+                    <label className="set-check">
+                      <input
+                        type="checkbox"
+                        checked={row.completed}
+                        onChange={(event) =>
+                          updateSetRow(row.id, "completed", event.target.checked)
+                        }
+                      />
+                      <span>Serie {index + 1}</span>
+                    </label>
+
+                    <label>
+                      Peso ({weightUnit})
+                      <input
+                        type="number"
+                        value={row.weight}
+                        onChange={(event) =>
+                          updateSetRow(row.id, "weight", event.target.value)
+                        }
+                        min="0"
+                      />
+                    </label>
+
+                    <label>
+                      Reps
+                      <input
+                        type="number"
+                        value={row.reps}
+                        onChange={(event) =>
+                          updateSetRow(row.id, "reps", event.target.value)
+                        }
+                        min="0"
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button className="save-button" type="submit">
             {editingExerciseId ? "Guardar cambios" : "Guardar ejercicio"}
