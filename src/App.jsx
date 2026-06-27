@@ -1275,84 +1275,80 @@ function App() {
             </div>
           )}
 
-          {setRows.length > 0 && (
-            <div className="sets-editor">
-              <div className="sets-editor-header">
-                <div>
-                  <strong>Series del ejercicio</strong>
-                  <small>Marca cada serie cuando la completes.</small>
-                </div>
+{setRows.length > 0 && (
+  <div className="sets-editor">
+    <div className="sets-editor-header">
+      <div>
+        <strong>Series del ejercicio</strong>
+        <small>Marca cada serie cuando la completes.</small>
+      </div>
 
-                <button type="button" onClick={applyBaseValuesToSeries}>
-                  Aplicar base
-                </button>
-              </div>
+      <button type="button" onClick={applyBaseValuesToSeries}>
+        Aplicar base
+      </button>
+    </div>
 
-                  <div
-                    className={`set-row ${
-                      measurementType === "time" ? "time-set-row" : ""
-                    }`}
-                    key={row.id}
-                  >
-                    <label className="set-check">
-                      <input
-                        type="checkbox"
-                        checked={row.completed}
-                        onChange={(event) =>
-                          updateSetRow(row.id, "completed", event.target.checked)
-                        }
-                      />
-                      <span>Serie {index + 1}</span>
-                    </label>
+    <div className="set-rows">
+      {setRows.map((row, index) => (
+        <div
+          className={`set-row ${measurementType === "time" ? "time-set-row" : ""}`}
+          key={row.id}
+        >
+          <label className="set-check">
+            <input
+              type="checkbox"
+              checked={row.completed}
+              onChange={(event) =>
+                updateSetRow(row.id, "completed", event.target.checked)
+              }
+            />
+            <span>Serie {index + 1}</span>
+          </label>
 
-                    {measurementType === "weight" ? (
-                      <>
-                        <label>
-                          Peso ({weightUnit})
-                          <input
-                            type="number"
-                            value={row.weight}
-                            onChange={(event) =>
-                              updateSetRow(row.id, "weight", event.target.value)
-                            }
-                            min="0"
-                          />
-                        </label>
+          {measurementType === "weight" ? (
+            <>
+              <label>
+                Peso ({weightUnit})
+                <input
+                  type="number"
+                  value={row.weight}
+                  onChange={(event) =>
+                    updateSetRow(row.id, "weight", event.target.value)
+                  }
+                  min="0"
+                />
+              </label>
 
-                        <label>
-                          Reps
-                          <input
-                            type="number"
-                            value={row.reps}
-                            onChange={(event) =>
-                              updateSetRow(row.id, "reps", event.target.value)
-                            }
-                            min="0"
-                          />
-                        </label>
-                      </>
-                    ) : (
-                      <label>
-                        Tiempo (segundos)
-                        <input
-                          type="number"
-                          value={row.durationSeconds}
-                          onChange={(event) =>
-                            updateSetRow(
-                              row.id,
-                              "durationSeconds",
-                              event.target.value
-                            )
-                          }
-                          min="0"
-                        />
-                      </label>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+              <label>
+                Reps
+                <input
+                  type="number"
+                  value={row.reps}
+                  onChange={(event) =>
+                    updateSetRow(row.id, "reps", event.target.value)
+                  }
+                  min="0"
+                />
+              </label>
+            </>
+          ) : (
+            <label>
+              Tiempo (segundos)
+              <input
+                type="number"
+                value={row.durationSeconds}
+                onChange={(event) =>
+                  updateSetRow(row.id, "durationSeconds", event.target.value)
+                }
+                min="0"
+              />
+            </label>
           )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
           <button className="save-button" type="submit">
             {editingExerciseId ? "Guardar cambios" : "Guardar ejercicio"}
