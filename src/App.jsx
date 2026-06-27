@@ -453,6 +453,8 @@ function TempoScreen() {
 
 function App() {
   const [activeTab, setActiveTab] = useState("entreno");
+  const [trainingView, setTrainingView] = useState("calendar");
+  const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [workouts, setWorkouts] = useState(() => {
@@ -530,6 +532,23 @@ function App() {
 
     setWeightUnit(nextUnit);
   }
+
+  function openTrainingDay(dateKey) {
+    setSelectedDate(dateKey);
+    setTrainingView("day");
+    setShowExerciseForm(false);
+    setEditingExerciseId(null);
+  }
+
+  function backToCalendar() {
+    setTrainingView("calendar");
+    setShowExerciseForm(false);
+    setEditingExerciseId(null);
+  }
+
+  function openExerciseForm() {
+    setShowExerciseForm(true);
+  }
   
   function changeMonth(direction) {
     setCurrentDate(new Date(year, month + direction, 1));
@@ -587,6 +606,7 @@ function App() {
     setSets("");
     setCustomExercise("");
     setEditingExerciseId(null);
+    setShowExerciseForm(false);
   }
   
   function deleteExercise(exerciseId) {
@@ -616,6 +636,8 @@ function App() {
     const exercisesForCategory = EXERCISES[exercise.categoryId] || [];
     const isDefaultExercise = exercisesForCategory.includes(exercise.exerciseName);
 
+    setShowExerciseForm(true);
+
     setEditingExerciseId(exercise.id);
     setCategoryId(exercise.categoryId);
 
@@ -638,6 +660,7 @@ function App() {
     setReps("");
     setSets("");
     setCustomExercise("");
+    setShowExerciseForm(false);
   }
 
   function getDotsForDate(date) {
@@ -655,22 +678,41 @@ function App() {
   return (
     <main className="app">
     <div className={activeTab === "entreno" ? "tab-panel active" : "tab-panel"}>
-      <section className="header">
-        <div>
-          <p className="eyebrow">Gym Tracker</p>
-          <h1>Registro de entrenamiento</h1>
-        </div>
-        <div className="header-actions">
-          <button className="unit-toggle" type="button" onClick={toggleWeightUnit}>
-            {weightUnit === "kg" ? "kg → lb" : "lb → kg"}
-          </button>
+        <section className="header">
+          <div>
+            <p className="eyebrow">Gym Tracker</p>
+            <h1>
+              {trainingView === "calendar"
+                ? "Calendario de entrenamiento"
+                : "Día de entrenamiento"}
+            </h1>
+          </div>
 
-          <button className="today-button" type="button" onClick={() => setSelectedDate(getToday())}>
-            Hoy
-          </button>
-        </div>
-      </section>
+          <div className="header-actions">
+            <button className="unit-toggle" type="button" onClick={toggleWeightUnit}>
+              {weightUnit === "kg" ? "kg → lb" : "lb → kg"}
+            </button>
 
+            {trainingView === "calendar" ? (
+              <button
+                className="today-button"
+                type="button"
+                onClick={() => openTrainingDay(getToday())}
+              >
+                Hoy
+              </button>
+            ) : (
+              <button
+                className="today-button"
+                type="button"
+                onClick={backToCalendar}
+              >
+                Calendario
+              </button>
+            )}
+          </div>
+        </section>
+    {trainingView === "calendar" && (
       <section className="calendar-card">
         <div className="calendar-header">
           <button onClick={() => changeMonth(-1)}>←</button>
@@ -700,7 +742,7 @@ function App() {
               <button
                 key={dateKey}
                 className={`day ${isSelected ? "selected" : ""}`}
-                onClick={() => setSelectedDate(dateKey)}
+                onClick={() => openTrainingDay(dateKey)}
               >
                 <span>{date.getDate()}</span>
                 <div className="dots">
@@ -717,14 +759,25 @@ function App() {
           })}
         </div>
       </section>
+      )}
 
+  {trainingView === "day" && (
+    <>
       <section className="detail-card">
-        <div className="detail-header">
-          <div>
-            <p className="eyebrow">Día seleccionado</p>
-            <h2>{selectedDate}</h2>
+          <div className="detail-header">
+            <div>
+              <p className="eyebrow">Día seleccionado</p>
+              <h2>{formatDisplayDate(selectedDate)}</h2>
+            </div>
+
+            <button
+              type="button"
+              className="add-exercise-button"
+              onClick={openExerciseForm}
+            >
+              + Agregar
+            </button>
           </div>
-        </div>
 
         {selectedWorkouts.length === 0 ? (
           <p className="empty-message">Todavía no hay ejercicios registrados para este día.</p>
@@ -773,7 +826,8 @@ function App() {
           </div>
         )}
       </section>
-
+      
+    {showExerciseForm && (
       <section className="form-card">
         <p className="eyebrow">
           {editingExerciseId ? "Editar ejercicio" : "Agregar ejercicio"}
@@ -870,6 +924,9 @@ function App() {
           )}
         </form>
       </section>
+    )}
+  </>
+ )}
     </div>
 
     <div className={activeTab === "tempo" ? "tab-panel active" : "tab-panel"}>
