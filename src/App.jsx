@@ -74,6 +74,38 @@ function getCategoryById(id) {
   return CATEGORIES.find((category) => category.id === id);
 }
 
+const KG_TO_LB = 2.2046226218;
+
+function getDisplayWeight(weightKg, unit) {
+  const numericWeight = Number(weightKg) || 0;
+  return unit === "lb" ? numericWeight * KG_TO_LB : numericWeight;
+}
+
+function formatWeightNumber(value) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+}
+
+function formatWeight(weightKg, unit) {
+  const displayWeight = getDisplayWeight(weightKg, unit);
+  return `${formatWeightNumber(displayWeight)} ${unit}`;
+}
+
+function formatInputWeight(weightKg, unit) {
+  const displayWeight = getDisplayWeight(weightKg, unit);
+  return formatWeightNumber(displayWeight);
+}
+
+function inputWeightToKg(value, unit) {
+  const numericWeight = Number(value);
+
+  if (Number.isNaN(numericWeight)) return 0;
+
+  const weightKg = unit === "lb" ? numericWeight / KG_TO_LB : numericWeight;
+
+  return Number(weightKg.toFixed(2));
+}
+
 function formatTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -115,7 +147,7 @@ function getExerciseHistory(workouts, exerciseName, selectedDate) {
   return history.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function ExerciseHistory({ history }) {
+function ExerciseHistory({ history, weightUnit }) {
   if (history.length === 0) return null;
 
   const maxWeightEntry = history.reduce((max, item) => {
@@ -126,7 +158,8 @@ function ExerciseHistory({ history }) {
   const chartData = history;
 
   const chartWidth = Math.max(300, chartData.length * 72);
-  const maxChartWeight = Math.max(...chartData.map((item) => item.weight), 1);
+  const getChartWeight = (item) => getDisplayWeight(item.weight, weightUnit);
+  const maxChartWeight = Math.max(...chartData.map((item) => getChartWeight(item)), 1);
 
   const points = chartData
     .map((item, index) => {
@@ -135,7 +168,7 @@ function ExerciseHistory({ history }) {
           ? chartWidth / 2
           : 24 + (index * (chartWidth - 56)) / (chartData.length - 1);
 
-      const y = 145 - (item.weight / maxChartWeight) * 105;
+      const y = 145 - (getChartWeight(item) / maxChartWeight) * 105;
 
       return `${x},${y}`;
     })
@@ -154,13 +187,13 @@ function ExerciseHistory({ history }) {
       <div className="history-stats">
         <div>
           <span>Máximo peso</span>
-          <strong>{maxWeightEntry.weight} kg</strong>
+          <strong>{formatWeight(maxWeightEntry.weight, weightUnit)}</strong>
           <small>{formatDisplayDate(maxWeightEntry.date)}</small>
         </div>
 
         <div>
           <span>Sesión anterior</span>
-          <strong>{previousSession.weight} kg</strong>
+          <strong>{formatWeight(previousSession.weight, weightUnit)}</strong>
           <small>
             {previousSession.reps} reps · {previousSession.sets} series
           </small>
@@ -191,7 +224,7 @@ function ExerciseHistory({ history }) {
                 <circle cx={x} cy={y} r="5" />
 
                 <text x={x} y={y - 10} textAnchor="middle">
-                  {item.weight}kg
+                  {formatWeight(item.weight, weightUnit)}
                 </text>
 
                 <text x={x} y="170" textAnchor="middle" className="history-date-label">
@@ -204,7 +237,8 @@ function ExerciseHistory({ history }) {
       </div>
 
       <p className="history-note">
-        Último registro: {previousSession.weight} kg · {previousSession.reps} reps ·{" "}
+        Último registro: {formatWeight(previousSession.weight, weightUnit)} ·{" "}
+        {previousSession.reps} reps ·{" "}
         {previousSession.sets} series el {formatDisplayDate(previousSession.date)}.
       </p>
     </div>
@@ -433,10 +467,17 @@ function App() {
   const [reps, setReps] = useState("");
   const [sets, setSets] = useState("");
   const [editingExerciseId, setEditingExerciseId] = useState(null);
+  const [weightUnit, setWeightUnit] = useState(() => {
+    return localStorage.getItem("gym-weight-unit") || "kg";
+  });
 
   useEffect(() => {
     localStorage.setItem("gym-workouts", JSON.stringify(workouts));
   }, [workouts]);
+
+    useEffect(() => {
+    localStorage.setItem("gym-weight-unit", weightUnit);
+  }, [weightUnit]);
 
   useEffect(() => {
     if (editingExerciseId) return;
@@ -479,10 +520,21 @@ function App() {
     selectedDate
   );
 
+  function toggleWeightUnit() {
+    const nextUnit = weightUnit === "kg" ? "lb" : "kg";
+
+    if (weight) {
+      const currentWeightKg = inputWeightToKg(weight, weightUnit);
+      setWeight(formatInputWeight(currentWeightKg, nextUnit));
+    }
+
+    setWeightUnit(nextUnit);
+  }
+  
   function changeMonth(direction) {
     setCurrentDate(new Date(year, month + direction, 1));
   }
-
+  
   function handleSaveExercise(event) {
     event.preventDefault();
 
@@ -497,7 +549,7 @@ function App() {
     const exerciseData = {
       categoryId,
       exerciseName: finalExerciseName,
-      weight: Number(weight),
+      weight: inputWeightToKg(weight, weightUnit),
       reps: Number(reps),
       sets: Number(sets),
     };
@@ -575,7 +627,7 @@ function App() {
       setCustomExercise(exercise.exerciseName);
     }
 
-    setWeight(String(exercise.weight));
+    setWeight(formatInputWeight(exercise.weight, weightUnit));
     setReps(String(exercise.reps));
     setSets(String(exercise.sets));
   }
@@ -608,9 +660,15 @@ function App() {
           <p className="eyebrow">Gym Tracker</p>
           <h1>Registro de entrenamiento</h1>
         </div>
-        <button className="today-button" onClick={() => setSelectedDate(getToday())}>
-          Hoy
-        </button>
+        <div className="header-actions">
+          <button className="unit-toggle" type="button" onClick={toggleWeightUnit}>
+            {weightUnit === "kg" ? "kg → lb" : "lb → kg"}
+          </button>
+
+          <button className="today-button" type="button" onClick={() => setSelectedDate(getToday())}>
+            Hoy
+          </button>
+        </div>
       </section>
 
       <section className="calendar-card">
@@ -706,7 +764,8 @@ function App() {
 
                   <h3>{exercise.exerciseName}</h3>
                   <p>
-                    {exercise.weight} kg · {exercise.reps} reps · {exercise.sets} series
+                    {formatWeight(exercise.weight, weightUnit)} · {exercise.reps} reps ·{" "}
+                    {exercise.sets} series
                   </p>
                 </div>
               );
@@ -758,12 +817,12 @@ function App() {
           )}
 
           {currentExerciseHistory.length > 0 && (
-            <ExerciseHistory history={currentExerciseHistory} />
+            <ExerciseHistory history={currentExerciseHistory} weightUnit={weightUnit} />
           )}
 
           <div className="form-row">
             <label>
-              Peso kg
+              Peso ({weightUnit})
               <input
                 type="number"
                 value={weight}
