@@ -97,7 +97,8 @@ function formatInputWeight(weightKg, unit) {
 }
 
 function inputWeightToKg(value, unit) {
-  const numericWeight = Number(value);
+  const normalizedValue = String(value).replace(",", ".");
+  const numericWeight = Number(normalizedValue);
 
   if (Number.isNaN(numericWeight)) return 0;
 
@@ -1216,16 +1217,18 @@ function App() {
 
           {measurementType === "weight" ? (
             <div className="form-row">
-            <label>
-              Peso ({weightUnit})
-              <input
-                type="number"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                placeholder="20"
-                min="0"
-              />
-            </label>
+<label>
+  Peso ({weightUnit})
+  <input
+    type="number"
+    value={weight}
+    onChange={(e) => setWeight(e.target.value)}
+    placeholder="20"
+    min="0"
+    step="0.1"
+    inputMode="decimal"
+  />
+</label>
 
             <label>
               Reps
@@ -1307,17 +1310,19 @@ function App() {
 
           {measurementType === "weight" ? (
             <>
-              <label>
-                Peso ({weightUnit})
-                <input
-                  type="number"
-                  value={row.weight}
-                  onChange={(event) =>
-                    updateSetRow(row.id, "weight", event.target.value)
-                  }
-                  min="0"
-                />
-              </label>
+<label>
+  Peso ({weightUnit})
+  <input
+    type="number"
+    value={row.weight}
+    onChange={(event) =>
+      updateSetRow(row.id, "weight", event.target.value)
+    }
+    min="0"
+    step="0.1"
+    inputMode="decimal"
+  />
+</label>
 
               <label>
                 Reps
