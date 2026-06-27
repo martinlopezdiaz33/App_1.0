@@ -521,3 +521,20 @@ select {
 .tab-panel.active {
   display: block;
 }
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.add-exercise-button {
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  background: #111827;
+  color: white;
+  font-weight: 800;
+  white-space: nowrap;
+}
