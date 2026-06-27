@@ -106,16 +106,39 @@ function inputWeightToKg(value, unit) {
   return Number(weightKg.toFixed(2));
 }
 
-function createSetRow(weight = "", reps = "", completed = false) {
+function formatDuration(totalSeconds) {
+  const numericSeconds = Number(totalSeconds) || 0;
+  const minutes = Math.floor(numericSeconds / 60);
+  const seconds = numericSeconds % 60;
+
+  if (minutes <= 0) {
+    return `${seconds} s`;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, "0")} min`;
+}
+
+function getExerciseMeasurementType(exercise) {
+  return exercise.measurementType || (exercise.durationSeconds ? "time" : "weight");
+}
+
+function createSetRow(weight = "", reps = "", completed = false, durationSeconds = "") {
   return {
     id: crypto.randomUUID(),
     weight,
     reps,
+    durationSeconds,
     completed,
   };
 }
 
-function buildSetRows(count, baseWeight = "", baseReps = "", existingRows = []) {
+function buildSetRows(
+  count,
+  baseWeight = "",
+  baseReps = "",
+  existingRows = [],
+  baseDurationSeconds = ""
+) {
   const safeCount = Math.max(Number(count) || 0, 0);
 
   return Array.from({ length: safeCount }, (_, index) => {
@@ -125,21 +148,30 @@ function buildSetRows(count, baseWeight = "", baseReps = "", existingRows = []) 
       return existingRow;
     }
 
-    return createSetRow(baseWeight, baseReps, false);
+    return createSetRow(baseWeight, baseReps, false, baseDurationSeconds);
   });
 }
 
 function getSetDetails(exercise) {
   if (Array.isArray(exercise.setsDetails) && exercise.setsDetails.length > 0) {
-    return exercise.setsDetails;
+    return exercise.setsDetails.map((set, index) => ({
+      id: set.id || `set-${exercise.id}-${index}`,
+      weight: Number(set.weight) || 0,
+      reps: Number(set.reps) || 0,
+      durationSeconds: Number(set.durationSeconds) || 0,
+      completed: Boolean(set.completed),
+    }));
   }
 
   const legacySetCount = Number(exercise.sets) || 0;
+  const measurementType = getExerciseMeasurementType(exercise);
 
   return Array.from({ length: legacySetCount }, (_, index) => ({
     id: `legacy-${exercise.id}-${index}`,
-    weight: Number(exercise.weight) || 0,
-    reps: Number(exercise.reps) || 0,
+    weight: measurementType === "weight" ? Number(exercise.weight) || 0 : 0,
+    reps: measurementType === "weight" ? Number(exercise.reps) || 0 : 0,
+    durationSeconds:
+      measurementType === "time" ? Number(exercise.durationSeconds) || 0 : 0,
     completed: true,
   }));
 }
@@ -149,6 +181,7 @@ function getCompletedSetDetails(exercise) {
 }
 
 function getBestSet(exercise) {
+  const measurementType = getExerciseMeasurementType(exercise);
   const completedSets = getCompletedSetDetails(exercise);
   const allSets = getSetDetails(exercise);
   const setsToReview = completedSets.length > 0 ? completedSets : allSets;
@@ -157,7 +190,16 @@ function getBestSet(exercise) {
     return {
       weight: Number(exercise.weight) || 0,
       reps: Number(exercise.reps) || 0,
+      durationSeconds: Number(exercise.durationSeconds) || 0,
     };
+  }
+
+  if (measurementType === "time") {
+    return setsToReview.reduce((best, current) => {
+      return Number(current.durationSeconds) > Number(best.durationSeconds)
+        ? current
+        : best;
+    }, setsToReview[0]);
   }
 
   return setsToReview.reduce((best, current) => {
@@ -175,9 +217,16 @@ function getBestSet(exercise) {
 }
 
 function getExerciseSummary(exercise, weightUnit) {
+  const measurementType = getExerciseMeasurementType(exercise);
   const allSets = getSetDetails(exercise);
   const completedSets = getCompletedSetDetails(exercise);
   const bestSet = getBestSet(exercise);
+
+  if (measurementType === "time") {
+    return `${completedSets.length}/${allSets.length} series completadas · Máx ${formatDuration(
+      bestSet.durationSeconds
+    )}`;
+  }
 
   return `${completedSets.length}/${allSets.length} series completadas · Máx ${formatWeight(
     bestSet.weight,
@@ -212,16 +261,22 @@ function getExerciseHistory(workouts, exerciseName, selectedDate) {
 
     exercises.forEach((exercise) => {
       if (normalizeText(exercise.exerciseName) === normalizedExerciseName) {
+        const measurementType = getExerciseMeasurementType(exercise);
         const bestSet = getBestSet(exercise);
         const completedSets = getCompletedSetDetails(exercise);
         const completedSetCount = completedSets.length;
 
         history.push({
           date,
+          measurementType,
           weight: bestSet.weight,
           reps: bestSet.reps,
+          durationSeconds: bestSet.durationSeconds,
           sets: completedSetCount,
-          volume: bestSet.weight * bestSet.reps * Math.max(completedSetCount, 1),
+          volume:
+            measurementType === "time"
+              ? bestSet.durationSeconds * Math.max(completedSetCount, 1)
+              : bestSet.weight * bestSet.reps * Math.max(completedSetCount, 1),
         });
       }
     });
@@ -233,16 +288,31 @@ function getExerciseHistory(workouts, exerciseName, selectedDate) {
 function ExerciseHistory({ history, weightUnit }) {
   if (history.length === 0) return null;
 
-  const maxWeightEntry = history.reduce((max, item) => {
-    return item.weight > max.weight ? item : max;
+  const measurementType = history[0]?.measurementType || "weight";
+  const isTimeExercise = measurementType === "time";
+
+  const maxEntry = history.reduce((max, item) => {
+    if (isTimeExercise) {
+      return Number(item.durationSeconds) > Number(max.durationSeconds)
+        ? item
+        : max;
+    }
+
+    return Number(item.weight) > Number(max.weight) ? item : max;
   }, history[0]);
 
   const previousSession = history[history.length - 1];
   const chartData = history;
 
   const chartWidth = Math.max(300, chartData.length * 72);
-  const getChartWeight = (item) => getDisplayWeight(item.weight, weightUnit);
-  const maxChartWeight = Math.max(...chartData.map((item) => getChartWeight(item)), 1);
+
+  function getChartValue(item) {
+    return isTimeExercise
+      ? Number(item.durationSeconds) || 0
+      : getDisplayWeight(item.weight, weightUnit);
+  }
+
+  const maxChartValue = Math.max(...chartData.map((item) => getChartValue(item)), 1);
 
   const points = chartData
     .map((item, index) => {
@@ -251,7 +321,7 @@ function ExerciseHistory({ history, weightUnit }) {
           ? chartWidth / 2
           : 24 + (index * (chartWidth - 56)) / (chartData.length - 1);
 
-      const y = 145 - (getChartWeight(item) / maxChartWeight) * 105;
+      const y = 145 - (getChartValue(item) / maxChartValue) * 105;
 
       return `${x},${y}`;
     })
@@ -269,16 +339,26 @@ function ExerciseHistory({ history, weightUnit }) {
 
       <div className="history-stats">
         <div>
-          <span>Máximo peso</span>
-          <strong>{formatWeight(maxWeightEntry.weight, weightUnit)}</strong>
-          <small>{formatDisplayDate(maxWeightEntry.date)}</small>
+          <span>{isTimeExercise ? "Mayor tiempo" : "Máximo peso"}</span>
+          <strong>
+            {isTimeExercise
+              ? formatDuration(maxEntry.durationSeconds)
+              : formatWeight(maxEntry.weight, weightUnit)}
+          </strong>
+          <small>{formatDisplayDate(maxEntry.date)}</small>
         </div>
 
         <div>
           <span>Sesión anterior</span>
-          <strong>{formatWeight(previousSession.weight, weightUnit)}</strong>
+          <strong>
+            {isTimeExercise
+              ? formatDuration(previousSession.durationSeconds)
+              : formatWeight(previousSession.weight, weightUnit)}
+          </strong>
           <small>
-            {previousSession.reps} reps · {previousSession.sets} series
+            {isTimeExercise
+              ? `${previousSession.sets} series completadas`
+              : `${previousSession.reps} reps · ${previousSession.sets} series`}
           </small>
         </div>
       </div>
@@ -287,7 +367,7 @@ function ExerciseHistory({ history, weightUnit }) {
         <svg
           viewBox={`0 0 ${chartWidth} 190`}
           role="img"
-          aria-label="Gráfico de historial completo de peso"
+          aria-label="Gráfico de historial completo"
         >
           <line x1="24" y1="145" x2={chartWidth - 24} y2="145" />
           <line x1="24" y1="30" x2="24" y2="145" />
@@ -300,14 +380,16 @@ function ExerciseHistory({ history, weightUnit }) {
                 ? chartWidth / 2
                 : 24 + (index * (chartWidth - 56)) / (chartData.length - 1);
 
-            const y = 145 - (item.weight / maxChartWeight) * 105;
+            const y = 145 - (getChartValue(item) / maxChartValue) * 105;
 
             return (
               <g key={`${item.date}-${index}`}>
                 <circle cx={x} cy={y} r="5" />
 
                 <text x={x} y={y - 10} textAnchor="middle">
-                  {formatWeight(item.weight, weightUnit)}
+                  {isTimeExercise
+                    ? formatDuration(item.durationSeconds)
+                    : formatWeight(item.weight, weightUnit)}
                 </text>
 
                 <text x={x} y="170" textAnchor="middle" className="history-date-label">
@@ -320,9 +402,14 @@ function ExerciseHistory({ history, weightUnit }) {
       </div>
 
       <p className="history-note">
-        Último registro: {formatWeight(previousSession.weight, weightUnit)} ·{" "}
-        {previousSession.reps} reps ·{" "}
-        {previousSession.sets} series el {formatDisplayDate(previousSession.date)}.
+        Último registro:{" "}
+        {isTimeExercise
+          ? formatDuration(previousSession.durationSeconds)
+          : formatWeight(previousSession.weight, weightUnit)}
+        {isTimeExercise
+          ? ` · ${previousSession.sets} series completadas`
+          : ` · ${previousSession.reps} reps · ${previousSession.sets} series`}{" "}
+        el {formatDisplayDate(previousSession.date)}.
       </p>
     </div>
   );
@@ -552,6 +639,8 @@ function App() {
   const [reps, setReps] = useState("");
   const [sets, setSets] = useState("");
   const [setRows, setSetRows] = useState([]);
+  const [measurementType, setMeasurementType] = useState("weight");
+  const [durationSeconds, setDurationSeconds] = useState("");
   const [editingExerciseId, setEditingExerciseId] = useState(null);
   const [weightUnit, setWeightUnit] = useState(() => {
     return localStorage.getItem("gym-weight-unit") || "kg";
@@ -617,11 +706,29 @@ function App() {
     setWeightUnit(nextUnit);
   }
 
+  function updateMeasurementType(newMeasurementType) {
+    setMeasurementType(newMeasurementType);
+    setWeight("");
+    setReps("");
+    setDurationSeconds("");
+
+    const count = Number(sets) || 0;
+    setSetRows(buildSetRows(count, "", "", [], ""));
+  }
+
   function updatePlannedSets(value) {
     setSets(value);
 
     const count = Number(value) || 0;
-    setSetRows((prevRows) => buildSetRows(count, weight, reps, prevRows));
+
+    if (measurementType === "time") {
+      setSetRows((prevRows) =>
+        buildSetRows(count, "", "", prevRows, durationSeconds)
+      );
+      return;
+    }
+
+    setSetRows((prevRows) => buildSetRows(count, weight, reps, prevRows, ""));
   }
 
   function updateSetRow(rowId, field, value) {
@@ -641,11 +748,20 @@ function App() {
     const count = Number(sets) || 1;
 
     setSets(String(count));
+
+    if (measurementType === "time") {
+      setSetRows(
+        Array.from({ length: count }, () =>
+          createSetRow("", "", false, durationSeconds)
+        )
+      );
+      return;
+    }
+
     setSetRows(
-      Array.from({ length: count }, () => createSetRow(weight, reps, false))
+      Array.from({ length: count }, () => createSetRow(weight, reps, false, ""))
     );
-  }
-  
+  }  
   function openTrainingDay(dateKey) {
     setSelectedDate(dateKey);
     setTrainingView("day");
@@ -673,54 +789,89 @@ function App() {
     const finalExerciseName =
       exerciseName === "otro" ? customExercise.trim() : exerciseName;
 
-    if (!finalExerciseName || !weight || !reps || !sets) {
-      alert("Completa ejercicio, peso, repeticiones y series.");
+    if (!finalExerciseName || !sets) {
+      alert("Completa ejercicio y series planificadas.");
+      return;
+    }
+
+    if (measurementType === "weight" && setRows.length === 0 && (!weight || !reps)) {
+      alert("Completa peso, repeticiones y series.");
+      return;
+    }
+
+    if (measurementType === "time" && setRows.length === 0 && !durationSeconds) {
+      alert("Completa el tiempo en segundos y las series.");
       return;
     }
 
     const rowsToSave =
       setRows.length > 0
         ? setRows
-        : buildSetRows(Number(sets) || 1, weight, reps);
+        : buildSetRows(Number(sets) || 1, weight, reps, [], durationSeconds);
 
-    const normalizedSetRows = rowsToSave.map((row, index) => ({
-      id: row.id || `set-${index + 1}`,
-      weight: inputWeightToKg(row.weight, weightUnit),
-      reps: Number(row.reps),
-      completed: Boolean(row.completed),
-    }));
+    const normalizedSetRows = rowsToSave.map((row, index) => {
+      if (measurementType === "time") {
+        return {
+          id: row.id || `set-${index + 1}`,
+          weight: 0,
+          reps: 0,
+          durationSeconds: Number(row.durationSeconds),
+          completed: Boolean(row.completed),
+        };
+      }
 
-    const hasInvalidSet = normalizedSetRows.some(
-      (row) => row.weight < 0 || !row.reps
-    );
+      return {
+        id: row.id || `set-${index + 1}`,
+        weight: inputWeightToKg(row.weight, weightUnit),
+        reps: Number(row.reps),
+        durationSeconds: 0,
+        completed: Boolean(row.completed),
+      };
+    });
+
+    const hasInvalidSet =
+      measurementType === "time"
+        ? normalizedSetRows.some((row) => !row.durationSeconds || row.durationSeconds <= 0)
+        : normalizedSetRows.some((row) => row.weight < 0 || !row.reps);
 
     if (normalizedSetRows.length === 0 || hasInvalidSet) {
-      alert("Completa las series con peso y repeticiones.");
+      alert(
+        measurementType === "time"
+          ? "Completa el tiempo de cada serie."
+          : "Completa las series con peso y repeticiones."
+      );
       return;
     }
 
     const completedRows = normalizedSetRows.filter((row) => row.completed);
     const rowsForSummary = completedRows.length > 0 ? completedRows : normalizedSetRows;
 
-    const bestRow = rowsForSummary.reduce((best, current) => {
-      if (current.weight > best.weight) return current;
+    const bestRow =
+      measurementType === "time"
+        ? rowsForSummary.reduce((best, current) => {
+            return current.durationSeconds > best.durationSeconds ? current : best;
+          }, rowsForSummary[0])
+        : rowsForSummary.reduce((best, current) => {
+            if (current.weight > best.weight) return current;
 
-      if (current.weight === best.weight && current.reps > best.reps) {
-        return current;
-      }
+            if (current.weight === best.weight && current.reps > best.reps) {
+              return current;
+            }
 
-      return best;
-    }, rowsForSummary[0]);
+            return best;
+          }, rowsForSummary[0]);
 
     const exerciseData = {
       categoryId,
       exerciseName: finalExerciseName,
-      weight: bestRow.weight,
-      reps: bestRow.reps,
+      measurementType,
+      weight: measurementType === "weight" ? bestRow.weight : 0,
+      reps: measurementType === "weight" ? bestRow.reps : 0,
+      durationSeconds:
+        measurementType === "time" ? bestRow.durationSeconds : 0,
       sets: normalizedSetRows.length,
       setsDetails: normalizedSetRows,
     };
-
     if (editingExerciseId) {
       setWorkouts((prev) => {
         const updatedDay = (prev[selectedDate] || []).map((exercise) => {
@@ -753,6 +904,7 @@ function App() {
     setReps("");
     setSets("");
     setSetRows([]);
+    setDurationSeconds("");
     setCustomExercise("");
     setEditingExerciseId(null);
     setShowExerciseForm(false);
@@ -798,16 +950,35 @@ function App() {
       setCustomExercise(exercise.exerciseName);
     }
 
+    const exerciseMeasurementType = getExerciseMeasurementType(exercise);
     const exerciseSets = getSetDetails(exercise);
+    const bestSet = getBestSet(exercise);
 
-    setWeight(formatInputWeight(exercise.weight, weightUnit));
-    setReps(String(exercise.reps));
+    setMeasurementType(exerciseMeasurementType);
+
+    if (exerciseMeasurementType === "time") {
+      setWeight("");
+      setReps("");
+      setDurationSeconds(String(bestSet.durationSeconds || ""));
+    } else {
+      setWeight(formatInputWeight(bestSet.weight, weightUnit));
+      setReps(String(bestSet.reps));
+      setDurationSeconds("");
+    }
+
     setSets(String(exerciseSets.length));
     setSetRows(
       exerciseSets.map((set) => ({
         id: set.id || crypto.randomUUID(),
-        weight: formatInputWeight(set.weight, weightUnit),
-        reps: String(set.reps),
+        weight:
+          exerciseMeasurementType === "weight"
+            ? formatInputWeight(set.weight, weightUnit)
+            : "",
+        reps: exerciseMeasurementType === "weight" ? String(set.reps) : "",
+        durationSeconds:
+          exerciseMeasurementType === "time"
+            ? String(set.durationSeconds)
+            : "",
         completed: Boolean(set.completed),
       }))
     );
@@ -819,6 +990,7 @@ function App() {
     setReps("");
     setSets("");
     setSetRows([]);
+    setDurationSeconds("");
     setCustomExercise("");
     setShowExerciseForm(false);
   }
@@ -1031,7 +1203,19 @@ function App() {
             <ExerciseHistory history={currentExerciseHistory} weightUnit={weightUnit} />
           )}
 
-          <div className="form-row">
+          <label>
+            Tipo de registro
+            <select
+              value={measurementType}
+              onChange={(event) => updateMeasurementType(event.target.value)}
+            >
+              <option value="weight">Peso + repeticiones</option>
+              <option value="time">Tiempo</option>
+            </select>
+          </label>
+
+          {measurementType === "weight" ? (
+            <div className="form-row">
             <label>
               Peso ({weightUnit})
               <input
@@ -1065,6 +1249,31 @@ function App() {
               />
             </label>
           </div>
+          ) : (
+            <div className="form-row time-form-row">
+              <label>
+                Tiempo por serie (segundos)
+                <input
+                  type="number"
+                  value={durationSeconds}
+                  onChange={(e) => setDurationSeconds(e.target.value)}
+                  placeholder="45"
+                  min="0"
+                />
+              </label>
+
+              <label>
+                Series planificadas
+                <input
+                  type="number"
+                  value={sets}
+                  onChange={(e) => updatePlannedSets(e.target.value)}
+                  placeholder="3"
+                  min="0"
+                />
+              </label>
+            </div>
+          )}
 
           {setRows.length > 0 && (
             <div className="sets-editor">
@@ -1079,9 +1288,12 @@ function App() {
                 </button>
               </div>
 
-              <div className="set-rows">
-                {setRows.map((row, index) => (
-                  <div className="set-row" key={row.id}>
+                  <div
+                    className={`set-row ${
+                      measurementType === "time" ? "time-set-row" : ""
+                    }`}
+                    key={row.id}
+                  >
                     <label className="set-check">
                       <input
                         type="checkbox"
@@ -1093,29 +1305,49 @@ function App() {
                       <span>Serie {index + 1}</span>
                     </label>
 
-                    <label>
-                      Peso ({weightUnit})
-                      <input
-                        type="number"
-                        value={row.weight}
-                        onChange={(event) =>
-                          updateSetRow(row.id, "weight", event.target.value)
-                        }
-                        min="0"
-                      />
-                    </label>
+                    {measurementType === "weight" ? (
+                      <>
+                        <label>
+                          Peso ({weightUnit})
+                          <input
+                            type="number"
+                            value={row.weight}
+                            onChange={(event) =>
+                              updateSetRow(row.id, "weight", event.target.value)
+                            }
+                            min="0"
+                          />
+                        </label>
 
-                    <label>
-                      Reps
-                      <input
-                        type="number"
-                        value={row.reps}
-                        onChange={(event) =>
-                          updateSetRow(row.id, "reps", event.target.value)
-                        }
-                        min="0"
-                      />
-                    </label>
+                        <label>
+                          Reps
+                          <input
+                            type="number"
+                            value={row.reps}
+                            onChange={(event) =>
+                              updateSetRow(row.id, "reps", event.target.value)
+                            }
+                            min="0"
+                          />
+                        </label>
+                      </>
+                    ) : (
+                      <label>
+                        Tiempo (segundos)
+                        <input
+                          type="number"
+                          value={row.durationSeconds}
+                          onChange={(event) =>
+                            updateSetRow(
+                              row.id,
+                              "durationSeconds",
+                              event.target.value
+                            )
+                          }
+                          min="0"
+                        />
+                      </label>
+                    )}
                   </div>
                 ))}
               </div>
