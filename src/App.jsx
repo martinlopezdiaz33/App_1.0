@@ -5,11 +5,11 @@ const CATEGORIES = [
   { id: "pecho", name: "Pecho", color: "#dc2626" },
   { id: "espalda", name: "Espalda", color: "#ca8a04" },
   { id: "hombro", name: "Hombro", color: "#16a34a" },
-  { id: "brazos", name: "Brazos", color: "#9333ea" },
+  { id: "biceps", name: "Bíceps", color: "#7c3aed" },
+  { id: "triceps", name: "Tríceps", color: "#9333ea" },
   { id: "abdomen", name: "Abdomen", color: "#ea580c" },
   { id: "cardio", name: "Cardio", color: "#0891b2" },
   { id: "fullbody", name: "Full Body", color: "#111827" },
-  { id: "descanso", name: "Descanso", color: "#6b7280" },
 ];
 
 const EXERCISES = {
@@ -45,17 +45,25 @@ const EXERCISES = {
     "Pájaros",
     "Face pull",
   ],
-  brazos: [
+  biceps: [
     "Curl bíceps",
     "Curl martillo",
+    "Curl concentrado",
+    "Curl predicador",
+    "Curl en polea",
+    "Curl barra",
+  ],
+  triceps: [
     "Extensión tríceps polea",
     "Press francés",
     "Fondos tríceps",
+    "Extensión sobre cabeza",
+    "Patada de tríceps",
+    "Press cerrado",
   ],
   abdomen: ["Crunch", "Plancha", "Elevación de piernas", "Abdominal en máquina"],
   cardio: ["Caminadora", "Bicicleta", "Elíptica", "Escaladora"],
   fullbody: ["Circuito full body", "Funcional", "Cross training"],
-  descanso: ["Descanso activo", "Movilidad", "Caminata suave"],
 };
 
 function formatDate(date) {
@@ -71,7 +79,31 @@ function getToday() {
 }
 
 function getCategoryById(id) {
-  return CATEGORIES.find((category) => category.id === id);
+  const category = CATEGORIES.find((category) => category.id === id);
+
+  if (category) return category;
+
+  if (id === "brazos") {
+    return {
+      id: "brazos",
+      name: "Brazos",
+      color: "#9333ea",
+    };
+  }
+
+  if (id === "descanso") {
+    return {
+      id: "descanso",
+      name: "Descanso",
+      color: "#6b7280",
+    };
+  }
+
+  return {
+    id: "otro",
+    name: "Otro",
+    color: "#6b7280",
+  };
 }
 
 const KG_TO_LB = 2.2046226218;
@@ -934,14 +966,31 @@ function App() {
     setCustomExercise("");
   }
 
-  function startEditExercise(exercise) {
-    const exercisesForCategory = EXERCISES[exercise.categoryId] || [];
+function startEditExercise(exercise) {
+  let editableCategoryId = exercise.categoryId;
+
+  if (exercise.categoryId === "brazos") {
+    const exerciseName = exercise.exerciseName.toLowerCase();
+
+    if (
+      exerciseName.includes("tríceps") ||
+      exerciseName.includes("triceps") ||
+      exerciseName.includes("francés") ||
+      exerciseName.includes("fondos")
+    ) {
+      editableCategoryId = "triceps";
+    } else {
+      editableCategoryId = "biceps";
+    }
+  }
+
+  const exercisesForCategory = EXERCISES[editableCategoryId] || [];
     const isDefaultExercise = exercisesForCategory.includes(exercise.exerciseName);
 
     setShowExerciseForm(true);
 
     setEditingExerciseId(exercise.id);
-    setCategoryId(exercise.categoryId);
+    setCategoryId(editableCategoryId);
 
     if (isDefaultExercise) {
       setExerciseName(exercise.exerciseName);
