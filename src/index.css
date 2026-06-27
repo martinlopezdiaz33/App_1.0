@@ -33,6 +33,12 @@ button {
   margin-bottom: 20px;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 h1,
 h2,
 h3,
@@ -61,6 +67,7 @@ h2 {
 }
 
 .today-button,
+.unit-toggle,
 .calendar-header button,
 .save-button {
   border: 0;
