@@ -592,6 +592,14 @@ select {
   padding: 12px;
 }
 
+.time-set-row {
+  grid-template-columns: 1fr 2fr;
+}
+
+.time-form-row {
+  grid-template-columns: 1fr 1fr;
+}
+
 .set-check {
   display: flex;
   flex-direction: row;
